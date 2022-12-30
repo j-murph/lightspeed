@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+
+<head>
+  <style>
+    body {
+      background: #000;
+    }
+
+    #canvas {
+      position: fixed;
+      align-items: center;
+      justify-content: center;
+      left: 0;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+      cursor: none;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext('2d');
+    const maxDistance = 255;
+    const numStars = 2050;
+    const interpAlgos = [starLerp, lerp, slerp];
+
+    let interpAlgo = interpAlgos[0];
+    let clear = false;
+
+    ctx.canvas.width = window.innerWidth;
+    ctx.canvas.height = window.innerHeight;
+
+    let accelX = 0, accelY = 0;
+
+    function makeThing(maxWidth, maxHeight) {
+      const rngSgn = () => {
+        var sign = Math.random() > .5 ? 1 : -1;
+        return Math.random() * sign;
+      };
+      return {
+        x: Math.random() * maxWidth,
+        y: Math.random() * maxHeight,
+        size: 1,
+        distance: 100 + Math.random() * (maxDistance - 100),
+        speed: 25 + Math.random() * 50
+      };
+    }
+
+    const things = [];
+    for (let x = 0; x < numStars; x++) {
+      things.push(makeThing(canvas.width, canvas.height));
+    }
+
+    function paint(e) {
+      if (clear) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.rect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = `#000`;
+        ctx.fill();
+      }
+
+      updateThings(things);
+      drawThings(things);
+
+      requestAnimationFrame(paint);
+    }
+
+    function drawThings(things) {
+      things.forEach((t) => {
+        const shade = interpAlgo(255, 0, t.distance / maxDistance);
+        ctx.beginPath();
+        ctx.fillStyle = `rgb(${shade},${shade},${shade})`;
+        ctx.arc(t.x, t.y, t.size, 0, 2 * Math.PI);
+        ctx.fill();
+      })
+    }
+
+
+    function updateThings(things) {
+      var centerX = window.innerWidth / 2,
+        centerY = window.innerHeight / 2;
+
+      for (var i = 0; i < things.length; i++) {
+        const thing = things[i];
+        const vec = { x: thing.x - centerX, y: thing.y - centerY };
+        const length = Math.sqrt(vec.x ** 2 + vec.y ** 2);
+        vec.x /= length;
+        vec.y /= length;
+
+        thing.x = thing.x + (vec.x * thing.speed) / thing.distance;
+        thing.y = thing.y + (vec.y * thing.speed) / thing.distance;
+
+        thing.x += accelX;
+        thing.y += accelY;
+
+        thing.size = lerp(.2, 2.2, 1 - thing.distance / maxDistance);
+
+        thing.distance -= 1;
+
+        if (thing.x < 0 || thing.x > window.innerWidth || thing.y < 0 || thing.y > window.innerHeight || thing.distance <= 0) {
+          things[i] = makeThing(window.innerWidth, window.innerHeight);
+        }
+      }
+    }
+
+    function slerp(x, y, t) {
+      return x + (y - x) * Math.sin((Math.PI / 2) * t);
+    }
+
+    function starLerp(x, y, t) {
+      return x + (y - x) * Math.sin((Math.PI / 2) * Math.sqrt(t ** 2));
+    }
+
+    function lerp(x, y, t) {
+      return x + (y - x) * t;
+    }
+
+    let allowMouse = false, lastMouseX, lastMouseY;
+    canvas.addEventListener('mousemove', (e) => {
+      if (!allowMouse) {
+        return;
+      }
+      if (lastMouseX !== undefined && lastMouseY !== undefined) {
+        const changeX = (window.innerWidth / 2) - e.clientX;
+        const changeY = (window.innerHeight / 2) - e.clientY;
+        accelX = Math.min(Math.sqrt(Math.abs(changeX)), 9) * Math.sign(changeX);
+        accelY = Math.min(Math.sqrt(Math.abs(changeY)), 9) * Math.sign(changeY);
+      }
+
+      lastMouseX = e.clientX;
+      lastMouseY = e.clientY;
+    });
+
+    setTimeout(() => clear = allowMouse = true, 1000);
+
+    requestAnimationFrame(paint);
+  </script>
+</body>
+</htm>
